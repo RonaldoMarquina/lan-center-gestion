@@ -37,7 +37,16 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
+    # Librerías de terceros
+    'rest_framework',
+
+    # Nuestras Apps (Capas de la Arquitectura)
+    'core.apps.CoreConfig',
+    'infrastructure.apps.InfrastructureConfig',
+    'presentation.apps.PresentationConfig',
 ]
+
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
