@@ -9,14 +9,22 @@ Se emplea unittest para evitar dependencias adicionales.
 """
 
 import unittest
+import sys
+import os
 
-from backend.core.domain.models.cabina import (
+# Add backend path so 'core.' package is importable when tests run from project root
+TESTS_DIR = os.path.dirname(__file__)
+BACKEND_DIR = os.path.abspath(os.path.join(TESTS_DIR, '..'))
+if BACKEND_DIR not in sys.path:
+	sys.path.append(BACKEND_DIR)
+
+from core.domain.models.cabina import (
 	Cabina,
 	TipoCabina,
 	EstadoCabina,
 )
-from backend.core.application.use_cases.gestionar_cabinas import GestionarCabinas
-from backend.core.application.ports.repositories import CabinaRepositoryPort
+from core.application.use_cases.gestionar_cabinas import GestionarCabinas
+from core.application.ports.repositories import CabinaRepositoryPort
 
 
 class InMemoryCabinaRepository(CabinaRepositoryPort):

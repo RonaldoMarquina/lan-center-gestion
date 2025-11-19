@@ -1,19 +1,12 @@
-"""Caso de Uso: Gestionar Cabinas
-
-Orquesta la lógica para creación y gestión de estados de cabinas apoyándose
-en el puerto de repositorio. Mantiene la lógica de negocio delegada a la
-entidad Cabina y valida aspectos de consistencia (unicidad de número, etc.).
-"""
+"""Use case gestionar cabinas."""
 
 from typing import List, Optional
 
-from backend.core.domain.models.cabina import Cabina, TipoCabina, EstadoCabina
+from core.domain.models.cabina import Cabina, TipoCabina, EstadoCabina
 
 
 class GestionarCabinas:
-    """
-    Caso de uso para la gestión de cabinas
-    """
+    """Operaciones de gestión."""
     
     def __init__(self, cabina_repository):
         """
