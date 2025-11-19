@@ -1,4 +1,13 @@
-# Caso de Uso: Gestionar Cabinas
+"""Caso de Uso: Gestionar Cabinas
+
+Orquesta la lógica para creación y gestión de estados de cabinas apoyándose
+en el puerto de repositorio. Mantiene la lógica de negocio delegada a la
+entidad Cabina y valida aspectos de consistencia (unicidad de número, etc.).
+"""
+
+from typing import List, Optional
+
+from backend.core.domain.models.cabina import Cabina, TipoCabina, EstadoCabina
 
 
 class GestionarCabinas:
@@ -142,5 +151,5 @@ class GestionarCabinas:
         if not cabina:
             raise ValueError(f"No se encontró la cabina {cabina_id}")
         
-        cabina.precio_por_hora = nuevo_precio
+        cabina.actualizar_precio(nuevo_precio)
         return self.cabina_repository.guardar(cabina)
