@@ -102,6 +102,97 @@ Beneficios:
    - Marca reserva como COMPLETADA
    - Libera cabina (OCUPADA → DISPONIBLE)
 
+7. **Registrar Pago (Sesión Finalizada):**
+   - POST /pagos/ con sesion_id, monto, metodo_pago
+   - Valida: sesión FINALIZADA y sin pago previo (OneToOne)
+   - Crea pago en estado PENDIENTE
+
+8. **Completar Pago:**
+   - POST /pagos/{id}/completar/ (opcional comprobante_numero)
+   - Si no se envía comprobante, genera uno automático prefijado "COMP-" + timestamp
+   - Transición PENDIENTE → COMPLETADO
+
+9. **Comprobante:**
+   - GET /pagos/{id}/comprobante/ devuelve número, monto, método y sesión asociada
+
+10. **Marcar Pago Fallido:**
+    - POST /pagos/{id}/marcar-fallido/ con motivo
+    - Transición PENDIENTE → FALLIDO (no puede luego completarse)
+
+11. **Reembolsar Pago:**
+    - POST /pagos/{id}/reembolsar/ con motivo
+    - Solo si estado actual = COMPLETADO → REEMBOLSADO
+
+12. **Historial Usuario:**
+    - GET /pagos/?usuario_id=XXX lista pagos (filtros por estado, fecha desde/hasta)
+
+### Módulo Pagos (RF17–RF19)
+
+**Entidad Dominio `Pago`:**
+- Atributos: id, sesion_id, usuario_id, monto (Decimal>0), metodo_pago, estado_pago, fecha_pago, comprobante_numero, notas
+- Estados (`EstadoPago`): PENDIENTE, COMPLETADO, FALLIDO, REEMBOLSADO
+- Métodos: completar(), marcar_fallido(), reembolsar(), generar_numero_comprobante(prefijo="COMP")
+- Reglas:
+  - Sólo pagos PENDIENTE pueden completarse o marcarse fallidos
+  - Sólo pagos COMPLETADO pueden reembolsarse
+  - Generar comprobante si falta al completar
+
+**Método de Pago (`MetodoPago`):** EFECTIVO, TARJETA, TRANSFERENCIA, BILLETERA_DIGITAL
+
+**Puerto `PagoRepositoryPort`:**
+- guardar, obtener_por_id, obtener_por_sesion, listar_por_usuario, listar_por_estado, listar_por_fecha(desde,hasta), eliminar
+
+**Caso de Uso `ProcesarPagos`:**
+- registrar_pago(sesion_id, monto, metodo) valida sesión FINALIZADA
+- completar_pago(pago_id, comprobante?) genera comprobante si no se pasa
+- marcar_pago_fallido(pago_id, motivo)
+- reembolsar_pago(pago_id, motivo)
+- obtener_historial_usuario(usuario_id)
+- generar_comprobante(pago_id) (para fallback)
+
+**Persistencia `PagoModel`:**
+- OneToOneField a `SesionModel` (garantiza un pago por sesión)
+- Campos: monto, metodo_pago (lowercase), estado (lowercase), fecha_pago, comprobante_numero (único), notas
+- Índices: (usuario, estado), fecha_pago, comprobante_numero
+
+**Adaptador `DjangoPagoRepository`:**
+- Filtros por estado (lowercase) y rangos de fecha
+- Conversión enum almacenado en minúscula ↔ dominio en mayúscula
+
+**API Endpoints Pagos:**
+- POST /pagos/ (crear pago pendiente)
+- POST /pagos/{id}/completar/
+- POST /pagos/{id}/marcar-fallido/
+- POST /pagos/{id}/reembolsar/
+- GET  /pagos/{id}/comprobante/
+- GET  /pagos/ (filtros: usuario_id, estado, fecha_desde, fecha_hasta)
+
+**Validaciones Clave:**
+- Sesión debe estar FINALIZADA para registrar pago
+- Un pago por sesión (OneToOne)
+- Monto > 0
+- Transiciones controladas y exclusivas
+
+**Testing:**
+- Unit tests (13): estados, métodos de dominio, comprobante automático, caso de uso completo
+- API tests (9): registrar, completar (con y sin comprobante), historial, comprobante, fallido, reembolsar, flujo completo, restricción sesión no finalizada
+- Uso de SQLite in-memory para aislar lógica y acelerar ejecución (override dinámico en settings)
+
+**Flujo Simplificado Pago:**
+1. Finalizar sesión → estado FINALIZADA con costo_total
+2. Registrar pago (PENDIENTE)
+3. Completar pago (COMPLETADO) y generar comprobante si falta
+4. Consultar comprobante / historial
+5. Opcional: marcar fallido o reembolsar según estado
+
+**Beneficios del Diseño:**
+- Extensible para nuevos métodos de pago (agregar enum + choices)
+- Reembolsos auditables mediante estados explícitos
+- Separación completa de lógica (dominio) y detalles ORM (infraestructura)
+- Fácil reemplazo de repositorio (ej. servicio externo de facturación) implementando el puerto
+
+---
+
 ### Validaciones de Negocio
 
 - **Conflictos de horario:** No permite reservas solapadas en misma cabina
