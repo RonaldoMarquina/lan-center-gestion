@@ -2,6 +2,7 @@
 from datetime import datetime
 from decimal import Decimal
 from typing import List, Optional
+from django.utils import timezone
 
 from core.domain.models.sesion import Sesion, EstadoSesion
 from core.domain.models.reserva import EstadoReserva
@@ -52,7 +53,7 @@ class GestionarSesiones:
             reserva_id=reserva_id,
             cabina_id=reserva.cabina_id,
             usuario_id=reserva.usuario_id,
-            fecha_hora_inicio=datetime.now(),
+            fecha_hora_inicio=timezone.now(),
             fecha_hora_fin=None,
             tiempo_total_minutos=0,
             costo_total=Decimal('0.00'),
@@ -77,7 +78,7 @@ class GestionarSesiones:
             raise ValueError(f"Sesión con id {sesion_id} no existe")
         
         # Finalizar sesión (calcula tiempo y costo)
-        sesion.finalizar(datetime.now())
+        sesion.finalizar(timezone.now())
         sesion_actualizada = self.sesion_repo.guardar(sesion)
         
         # Completar reserva

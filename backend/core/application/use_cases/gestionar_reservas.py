@@ -41,7 +41,7 @@ class GestionarReservas:
             fecha_hora_fin
         )
         if conflictos:
-            raise ValueError("Ya existe una reserva en ese horario")
+            raise ValueError("Conflicto de horario: ya existe una reserva en ese horario")
         
         # Crear reserva
         reserva = Reserva(
@@ -103,7 +103,8 @@ class GestionarReservas:
         return self.reserva_repo.listar_por_cabina(cabina_id)
     
     def listar_reservas_activas(self) -> List[Reserva]:
-        """Lista reservas activas (confirmadas y en curso)."""
+        """Lista reservas activas (pendientes, confirmadas y en curso)."""
+        pendientes = self.reserva_repo.listar_por_estado(EstadoReserva.PENDIENTE)
         confirmadas = self.reserva_repo.listar_por_estado(EstadoReserva.CONFIRMADA)
         en_curso = self.reserva_repo.listar_por_estado(EstadoReserva.EN_CURSO)
-        return confirmadas + en_curso
+        return pendientes + confirmadas + en_curso

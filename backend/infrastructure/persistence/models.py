@@ -91,7 +91,7 @@ class ReservaModel(models.Model):
 			cabina_id=self.cabina_id,
 			fecha_hora_inicio=self.fecha_hora_inicio,
 			fecha_hora_fin=self.fecha_hora_fin,
-			estado=EstadoReserva[self.estado],
+			estado=EstadoReserva[self.estado.upper()],
 			creada_en=self.creada_en,
 		)
 
@@ -152,7 +152,7 @@ class SesionModel(models.Model):
 			tiempo_total_minutos=self.tiempo_total_minutos,
 			costo_total=Decimal(str(self.costo_total)),
 			precio_por_hora=Decimal(str(self.precio_por_hora)),
-			estado=EstadoSesion[self.estado],
+			estado=EstadoSesion[self.estado.upper()],
 		)
 
 	@staticmethod

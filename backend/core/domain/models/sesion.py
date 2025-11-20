@@ -4,6 +4,7 @@ from datetime import datetime
 from decimal import Decimal
 from enum import Enum
 from typing import Optional
+from django.utils import timezone
 
 
 class EstadoSesion(Enum):
@@ -85,7 +86,7 @@ class Sesion:
     def _calcular_minutos(self) -> int:
         """Calcula minutos transcurridos."""
         if not self.fecha_hora_fin:
-            delta = datetime.now() - self.fecha_hora_inicio
+            delta = timezone.now() - self.fecha_hora_inicio
         else:
             delta = self.fecha_hora_fin - self.fecha_hora_inicio
         return int(delta.total_seconds() / 60)

@@ -1,12 +1,14 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
-from .views import CabinaViewSet
+from .views import CabinaViewSet, ReservaViewSet, SesionViewSet
 
 app_name = 'api'
 
 router = DefaultRouter()
 router.register(r'cabinas', CabinaViewSet, basename='cabina')
+router.register(r'reservas', ReservaViewSet, basename='reserva')
+router.register(r'sesiones', SesionViewSet, basename='sesion')
 
 urlpatterns = [
     # Auth
