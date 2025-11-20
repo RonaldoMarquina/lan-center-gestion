@@ -36,6 +36,13 @@ class CabinaViewSet(viewsets.ViewSet):
 		ser = CabinaSerializer(cabinas, many=True)
 		return Response(ser.data)
 
+	def retrieve(self, request, pk=None):
+		"""Obtiene una cabina por id."""
+		cabina = self.use_case.obtener_cabina(int(pk))
+		if not cabina:
+			return Response({"detail": "No encontrada"}, status=status.HTTP_404_NOT_FOUND)
+		return Response(CabinaSerializer(cabina).data)
+
 	@action(detail=False, methods=["get"], url_path="disponibles")
 	def disponibles(self, request):
 		cabinas = self.use_case.listar_cabinas_disponibles()
