@@ -8,10 +8,12 @@ from django.db.utils import IntegrityError
 from core.application.use_cases.gestionar_cabinas import GestionarCabinas
 from core.application.use_cases.gestionar_reservas import GestionarReservas
 from core.application.use_cases.gestionar_sesiones import GestionarSesiones
+from core.application.use_cases.gestionar_pagos import ProcesarPagos
 from infrastructure.persistence.repositories import (
 	DjangoCabinaRepository,
 	DjangoReservaRepository,
 	DjangoSesionRepository,
+	DjangoPagoRepository,
 )
 from core.domain.models.cabina import EstadoCabina
 from .serializers import (
@@ -22,6 +24,11 @@ from .serializers import (
 	ReservaCreateSerializer,
 	SesionSerializer,
 	SesionExtenderSerializer,
+	PagoSerializer,
+	PagoCreateSerializer,
+	PagoCompletarSerializer,
+	PagoFallidoSerializer,
+	PagoReembolsoSerializer,
 )
 
 
@@ -299,5 +306,115 @@ class SesionViewSet(viewsets.ViewSet):
 		try:
 			costo = self.use_case.calcular_costo_actual(int(pk))
 			return Response({"costo_actual": str(costo)})
+		except ValueError as ex:
+			return Response({"detail": str(ex)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class PagoViewSet(viewsets.ViewSet):
+	"""Operaciones de Pagos."""
+
+	pago_repo = DjangoPagoRepository()
+	sesion_repo = DjangoSesionRepository()
+	reserva_repo = DjangoReservaRepository()
+	use_case = ProcesarPagos(pago_repo, sesion_repo, reserva_repo)
+
+	def list(self, request):
+		"""Lista pagos (todos o filtrados por usuario)."""
+		usuario_id = request.query_params.get('usuario_id')
+		
+		if usuario_id:
+			pagos = self.use_case.obtener_historial_usuario(int(usuario_id))
+		else:
+			# Por defecto listar pendientes
+			pagos = self.use_case.obtener_pagos_pendientes()
+		
+		ser = PagoSerializer(pagos, many=True)
+		return Response(ser.data)
+
+	def retrieve(self, request, pk=None):
+		"""Obtiene un pago por id."""
+		pago = self.use_case.obtener_pago(int(pk))
+		if not pago:
+			return Response({"detail": "No encontrado"}, status=status.HTTP_404_NOT_FOUND)
+		return Response(PagoSerializer(pago).data)
+
+	def create(self, request):
+		"""Registra un nuevo pago."""
+		ser = PagoCreateSerializer(data=request.data)
+		ser.is_valid(raise_exception=True)
+		
+		try:
+			from core.domain.models.pago import MetodoPago
+			metodo = MetodoPago[ser.validated_data["metodo_pago"].upper()]
+			
+			pago = self.use_case.registrar_pago(
+				sesion_id=ser.validated_data["sesion_id"],
+				monto=ser.validated_data["monto"],
+				metodo_pago=metodo,
+				notas=ser.validated_data.get("notas", ""),
+			)
+			return Response(PagoSerializer(pago).data, status=status.HTTP_201_CREATED)
+		except ValueError as ex:
+			return Response({"detail": str(ex)}, status=status.HTTP_400_BAD_REQUEST)
+		except KeyError:
+			return Response({"detail": "Método de pago inválido"}, status=status.HTTP_400_BAD_REQUEST)
+
+	@action(detail=True, methods=["post"], url_path="completar")
+	def completar(self, request, pk=None):
+		"""Marca pago como completado."""
+		ser = PagoCompletarSerializer(data=request.data)
+		ser.is_valid(raise_exception=True)
+		
+		try:
+			pago = self.use_case.completar_pago(
+				int(pk),
+				ser.validated_data.get("comprobante_numero")
+			)
+			return Response(PagoSerializer(pago).data)
+		except ValueError as ex:
+			return Response({"detail": str(ex)}, status=status.HTTP_400_BAD_REQUEST)
+
+	@action(detail=True, methods=["post"], url_path="marcar-fallido")
+	def marcar_fallido(self, request, pk=None):
+		"""Marca pago como fallido."""
+		ser = PagoFallidoSerializer(data=request.data)
+		ser.is_valid(raise_exception=True)
+		
+		try:
+			pago = self.use_case.marcar_pago_fallido(int(pk), ser.validated_data["motivo"])
+			return Response(PagoSerializer(pago).data)
+		except ValueError as ex:
+			return Response({"detail": str(ex)}, status=status.HTTP_400_BAD_REQUEST)
+
+	@action(detail=True, methods=["post"], url_path="reembolsar")
+	def reembolsar(self, request, pk=None):
+		"""Reembolsa un pago completado."""
+		ser = PagoReembolsoSerializer(data=request.data)
+		ser.is_valid(raise_exception=True)
+		
+		try:
+			pago = self.use_case.reembolsar_pago(int(pk), ser.validated_data["motivo"])
+			return Response(PagoSerializer(pago).data)
+		except ValueError as ex:
+			return Response({"detail": str(ex)}, status=status.HTTP_400_BAD_REQUEST)
+
+	@action(detail=True, methods=["get"], url_path="comprobante")
+	def generar_comprobante(self, request, pk=None):
+		"""Obtiene/genera comprobante de pago."""
+		try:
+			comprobante_num = self.use_case.generar_comprobante(int(pk))
+			pago = self.use_case.obtener_pago(int(pk))
+			
+			if not pago:
+				return Response({"detail": "Pago no encontrado"}, status=status.HTTP_404_NOT_FOUND)
+			
+			data = {
+				"comprobante_numero": comprobante_num,
+				"sesion_id": pago.sesion_id,
+				"monto": str(pago.monto),
+				"metodo_pago": pago.metodo_pago.value,
+				"fecha_pago": pago.fecha_pago.isoformat(),
+			}
+			return Response(data)
 		except ValueError as ex:
 			return Response({"detail": str(ex)}, status=status.HTTP_400_BAD_REQUEST)

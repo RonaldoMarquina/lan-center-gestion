@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 from pathlib import Path
 from decouple import config, Csv
 from datetime import timedelta
+import sys
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -99,6 +100,15 @@ DATABASES = {
         },
     }
 }
+
+# Forzar SQLite en memoria durante ejecución de tests para aislar y acelerar
+if any(arg == 'test' or arg.endswith('test') for arg in sys.argv):
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': ':memory:',
+        }
+    }
 
 
 # Password validation

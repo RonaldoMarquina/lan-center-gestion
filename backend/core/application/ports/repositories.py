@@ -8,6 +8,7 @@ from typing import List, Optional
 from core.domain.models.cabina import Cabina, EstadoCabina
 from core.domain.models.reserva import Reserva, EstadoReserva
 from core.domain.models.sesion import Sesion, EstadoSesion
+from core.domain.models.pago import Pago, EstadoPago
 from datetime import datetime
 
 
@@ -120,4 +121,43 @@ class SesionRepositoryPort(ABC):
 	@abstractmethod
 	def eliminar(self, sesion_id: int) -> None:
 		"""Eliminar sesión."""
+		raise NotImplementedError
+
+
+class PagoRepositoryPort(ABC):
+	"""Operaciones CRUD y consultas de Pago."""
+
+	@abstractmethod
+	def guardar(self, pago: Pago) -> Pago:
+		"""Crear/actualizar pago."""
+		raise NotImplementedError
+
+	@abstractmethod
+	def obtener_por_id(self, pago_id: int) -> Optional[Pago]:
+		"""Por id."""
+		raise NotImplementedError
+
+	@abstractmethod
+	def obtener_por_sesion(self, sesion_id: int) -> Optional[Pago]:
+		"""Por sesión."""
+		raise NotImplementedError
+
+	@abstractmethod
+	def listar_por_usuario(self, usuario_id: int) -> List[Pago]:
+		"""Por usuario."""
+		raise NotImplementedError
+
+	@abstractmethod
+	def listar_por_estado(self, estado: EstadoPago) -> List[Pago]:
+		"""Por estado."""
+		raise NotImplementedError
+
+	@abstractmethod
+	def listar_por_fecha(self, fecha_desde: datetime, fecha_hasta: datetime) -> List[Pago]:
+		"""Por rango de fechas."""
+		raise NotImplementedError
+
+	@abstractmethod
+	def eliminar(self, pago_id: int) -> None:
+		"""Eliminar pago."""
 		raise NotImplementedError

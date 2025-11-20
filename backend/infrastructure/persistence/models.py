@@ -170,3 +170,72 @@ class SesionModel(models.Model):
 			estado=sesion.estado.value,
 		)
 		return instance
+
+
+class PagoModel(models.Model):
+	"""Modelo Django para Pago."""
+
+	METODO_PAGO_CHOICES = [
+		("efectivo", "Efectivo"),
+		("tarjeta", "Tarjeta"),
+		("transferencia", "Transferencia"),
+		("billetera_digital", "Billetera Digital"),
+	]
+
+	ESTADO_CHOICES = [
+		("pendiente", "Pendiente"),
+		("completado", "Completado"),
+		("fallido", "Fallido"),
+		("reembolsado", "Reembolsado"),
+	]
+
+	sesion = models.OneToOneField(
+		SesionModel, on_delete=models.CASCADE, related_name="pago"
+	)
+	usuario = models.ForeignKey(User, on_delete=models.CASCADE)
+	monto = models.DecimalField(max_digits=10, decimal_places=2)
+	metodo_pago = models.CharField(max_length=20, choices=METODO_PAGO_CHOICES)
+	estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default="pendiente")
+	fecha_pago = models.DateTimeField()
+	comprobante_numero = models.CharField(max_length=50, null=True, blank=True, unique=True)
+	notas = models.TextField(blank=True, default="")
+
+	class Meta:
+		db_table = "pagos"
+		ordering = ["-fecha_pago"]
+		indexes = [
+			models.Index(fields=["usuario", "estado"]),
+			models.Index(fields=["fecha_pago"]),
+			models.Index(fields=["comprobante_numero"]),
+		]
+
+	def to_domain(self) -> "Pago":
+		"""Convertir a entidad dominio."""
+		from core.domain.models.pago import Pago, MetodoPago, EstadoPago
+
+		return Pago(
+			id=self.id,
+			sesion_id=self.sesion_id,
+			usuario_id=self.usuario_id,
+			monto=self.monto,
+			metodo_pago=MetodoPago[self.metodo_pago.upper()],
+			estado=EstadoPago[self.estado.upper()],
+			fecha_pago=self.fecha_pago,
+			comprobante_numero=self.comprobante_numero,
+			notas=self.notas,
+		)
+
+	@staticmethod
+	def from_domain(pago: "Pago") -> "PagoModel":
+		"""Crear desde entidad dominio."""
+		return PagoModel(
+			id=pago.id if pago.id != 0 else None,
+			sesion_id=pago.sesion_id,
+			usuario_id=pago.usuario_id,
+			monto=pago.monto,
+			metodo_pago=pago.metodo_pago.value.lower(),
+			estado=pago.estado.value.lower(),
+			fecha_pago=pago.fecha_pago,
+			comprobante_numero=pago.comprobante_numero,
+			notas=pago.notas,
+		)

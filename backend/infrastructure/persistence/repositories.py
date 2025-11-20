@@ -9,12 +9,14 @@ from django.db.models import Q
 from core.application.ports.repositories import (
 	CabinaRepositoryPort,
 	ReservaRepositoryPort,
-	SesionRepositoryPort
+	SesionRepositoryPort,
+	PagoRepositoryPort,
 )
 from core.domain.models.cabina import Cabina, EstadoCabina
 from core.domain.models.reserva import Reserva, EstadoReserva
 from core.domain.models.sesion import Sesion, EstadoSesion
-from .models import CabinaModel, ReservaModel, SesionModel
+from core.domain.models.pago import Pago, EstadoPago
+from .models import CabinaModel, ReservaModel, SesionModel, PagoModel
 
 
 class DjangoCabinaRepository(CabinaRepositoryPort):
@@ -180,4 +182,64 @@ class DjangoSesionRepository(SesionRepositoryPort):
 			model = SesionModel.objects.get(id=sesion_id)
 			model.delete()
 		except SesionModel.DoesNotExist:
+			pass
+
+
+class DjangoPagoRepository(PagoRepositoryPort):
+	"""Implementa puerto usando PagoModel."""
+
+	@transaction.atomic
+	def guardar(self, pago: Pago) -> Pago:  # type: ignore[override]
+		if pago.id:
+			model = PagoModel.objects.get(id=pago.id)
+			model.sesion_id = pago.sesion_id
+			model.usuario_id = pago.usuario_id
+			model.monto = pago.monto
+			model.metodo_pago = pago.metodo_pago.value.lower()
+			model.estado = pago.estado.value.lower()
+			model.fecha_pago = pago.fecha_pago
+			model.comprobante_numero = pago.comprobante_numero
+			model.notas = pago.notas
+			model.save()
+			return model.to_domain()
+		# create
+		model = PagoModel.from_domain(pago)
+		model.save()
+		return model.to_domain()
+
+	def obtener_por_id(self, pago_id: int) -> Optional[Pago]:  # type: ignore[override]
+		try:
+			return PagoModel.objects.get(id=pago_id).to_domain()
+		except PagoModel.DoesNotExist:
+			return None
+
+	def obtener_por_sesion(self, sesion_id: int) -> Optional[Pago]:  # type: ignore[override]
+		try:
+			return PagoModel.objects.get(sesion_id=sesion_id).to_domain()
+		except PagoModel.DoesNotExist:
+			return None
+
+	def listar_por_usuario(self, usuario_id: int) -> List[Pago]:  # type: ignore[override]
+		return [m.to_domain() for m in PagoModel.objects.filter(usuario_id=usuario_id)]
+
+	def listar_por_estado(self, estado: EstadoPago) -> List[Pago]:  # type: ignore[override]
+		return [
+			m.to_domain()
+			for m in PagoModel.objects.filter(estado=estado.value.lower())
+		]
+
+	def listar_por_fecha(self, fecha_desde: datetime, fecha_hasta: datetime) -> List[Pago]:  # type: ignore[override]
+		return [
+			m.to_domain()
+			for m in PagoModel.objects.filter(
+				fecha_pago__gte=fecha_desde, fecha_pago__lte=fecha_hasta
+			)
+		]
+
+	@transaction.atomic
+	def eliminar(self, pago_id: int) -> None:  # type: ignore[override]
+		try:
+			model = PagoModel.objects.get(id=pago_id)
+			model.delete()
+		except PagoModel.DoesNotExist:
 			pass

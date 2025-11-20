@@ -91,3 +91,56 @@ class SesionSerializer(serializers.Serializer):
 
 class SesionExtenderSerializer(serializers.Serializer):
 	minutos_adicionales = serializers.IntegerField(min_value=1)
+
+
+# Pagos
+class PagoSerializer(serializers.Serializer):
+	id = serializers.IntegerField(read_only=True)
+	sesion_id = serializers.IntegerField()
+	usuario_id = serializers.IntegerField()
+	monto = serializers.DecimalField(max_digits=10, decimal_places=2)
+	metodo_pago = serializers.CharField()
+	estado = serializers.CharField()
+	fecha_pago = serializers.DateTimeField()
+	comprobante_numero = serializers.CharField(allow_null=True)
+	notas = serializers.CharField()
+
+	def to_representation(self, instance):
+		return {
+			'id': instance.id,
+			'sesion_id': instance.sesion_id,
+			'usuario_id': instance.usuario_id,
+			'monto': str(instance.monto),
+			'metodo_pago': instance.metodo_pago.value,
+			'estado': instance.estado.value,
+			'fecha_pago': instance.fecha_pago.isoformat(),
+			'comprobante_numero': instance.comprobante_numero,
+			'notas': instance.notas,
+		}
+
+
+class PagoCreateSerializer(serializers.Serializer):
+	sesion_id = serializers.IntegerField()
+	monto = serializers.DecimalField(max_digits=10, decimal_places=2)
+	metodo_pago = serializers.ChoiceField(choices=['efectivo', 'tarjeta', 'transferencia', 'billetera_digital'])
+	notas = serializers.CharField(required=False, allow_blank=True)
+
+
+class PagoCompletarSerializer(serializers.Serializer):
+	comprobante_numero = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+
+
+class PagoFallidoSerializer(serializers.Serializer):
+	motivo = serializers.CharField()
+
+
+class PagoReembolsoSerializer(serializers.Serializer):
+	motivo = serializers.CharField()
+
+
+class ComprobanteSerializer(serializers.Serializer):
+	comprobante_numero = serializers.CharField()
+	sesion_id = serializers.IntegerField()
+	monto = serializers.DecimalField(max_digits=10, decimal_places=2)
+	metodo_pago = serializers.CharField()
+	fecha_pago = serializers.DateTimeField()
